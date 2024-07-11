@@ -167,21 +167,26 @@ def main(temperature=0.7, rounds=3, max_tokens=2048):
     # model_reference = loadHugeLLM(session_len=104857, tp=1)
     instruction= "きのこの里とたけのこの山どっちが美味しい？"
 
-    data = {
-        "instruction": [[ {"role": "system", "content": "あなたは優秀なアシスタントです"}]
-                                for _ in range(len(models))],
-        "references": [""] * len(models),
-        "model": [m for m in models],
-    }
+    moa_app(instruction, temperature, rounds, max_tokens)
 
-    for i in range(len(models)):
-        data["instruction"][i].append({"role": "user", "content": instruction})
-        data["references"] = [""] * len(models)
+
+def moa_app(instruction, temperature=0.7, rounds=3, max_tokens=2048):
     num_proc = len(models)
+
+    data = {
+        "instruction": [[
+            {"role": "system", "content": "あなたは優秀なアシスタントです"},
+            {"role": "user", "content": instruction}]
+            for _ in range(num_proc)],
+        "references": [""] * num_proc,
+        "model": [m for m in models],
+        "temperature": [temperature] * num_proc,
+        "max_tokens": [max_tokens] * num_proc,
+    }
 
     ctx = mp.get_context('spawn')
 
-    refs = [""] * len(models)
+    refs = [""] * num_proc
     for _ in range(rounds):
         with ctx.Pool(processes=num_proc) as pool:
             # 非同期にタスクを実行
@@ -207,6 +212,7 @@ def main(temperature=0.7, rounds=3, max_tokens=2048):
     )
     print('Final output')
     print(output)
+    return output
 
 
 if __name__ =="__main__":
